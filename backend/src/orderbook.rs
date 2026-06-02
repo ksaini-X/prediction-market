@@ -1,29 +1,29 @@
-use std::collections::BTreeMap;
+use std::{cmp, collections::BTreeMap, panic::RefUnwindSafe};
 
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Order {
-    order_id: Uuid,
-    user_id: Uuid,
-    price: Decimal,
-    quantity: Decimal,
-    filled_quantity: Decimal,
-    order_type: OrderType,
-    order_side: OrderSide,
+    pub order_id: Uuid,
+    pub user_id: Uuid,
+    pub price: Decimal,
+    pub quantity: Decimal,
+    pub filled_quantity: Decimal,
+    pub order_type: OrderType,
+    pub order_side: OrderSide,
 }
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum OrderType {
     Buy,
     Sell,
 }
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum OrderSide {
     Yes,
     No,
 }
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Orderbook {
     pub bids: BTreeMap<Decimal, Vec<Order>>,
     pub asks: BTreeMap<Decimal, Vec<Order>>,
@@ -31,11 +31,11 @@ pub struct Orderbook {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct PlaceOrder {
-    user_id: Uuid,
-    price: Decimal,
-    quantity: Decimal,
-    order_type: OrderType,
-    order_side: OrderSide,
+    pub user_id: Uuid,
+    pub price: Decimal,
+    pub quantity: Decimal,
+    pub order_type: OrderType,
+    pub order_side: OrderSide,
 }
 
 pub struct Fill {
@@ -66,10 +66,22 @@ impl Orderbook {
 
         match order.order_type {
             OrderType::Buy => {
-                self.match_asks(&mut order);
+                let (executed_qauntity, fills) = self.match_asks(&mut order);
+                if executed_qauntity < order.quantity {
+                    self.bids
+                        .entry(order.price)
+                        .and_modify(|bids| bids.push(order.clone()))
+                        .or_insert(vec![order.clone()]);
+                }
             }
             OrderType::Sell => {
-                self.match_bids(&mut order);
+                let (executed_qauntity, fills) = self.match_bids(&mut order);
+                if executed_qauntity < order.quantity {
+                    self.asks
+                        .entry(order.price)
+                        .and_modify(|asks| asks.push(order.clone()))
+                        .or_insert(vec![order.clone()]);
+                }
             }
         };
     }
@@ -77,7 +89,7 @@ impl Orderbook {
     pub fn match_asks(&mut self, order: &mut Order) -> (Decimal, Vec<Fill>) {
         //Incoming order is willing to Buy
         // {Bid, price:98, q:10} (Usually the Bid order price would be less that the best ask)
-        // Asks are sorted ascedingly (no need to reverse)
+        // Asks are stored in asscending order (no need to reverse)
         // Price Qyt
         // 99   10
         // 100  11
@@ -85,13 +97,16 @@ impl Orderbook {
         let mut executed_quantity = dec!(0);
         let mut fills = Vec::<Fill>::new();
         for (price, asks) in self.asks.iter_mut() {
+            // the best ask here is at 99
+            // if the incoming order is willing Buy at <99 (say 98), return
             if &order.price < price {
                 break;
             }
             if executed_quantity < order.quantity {
                 for ask in asks.iter_mut() {
-                    let left_quantity = order.quantity - executed_quantity;
-                    let filled_quantity = std::cmp::min(left_quantity, ask.quantity);
+                    let left_quantity = order.quantity - order.filled_quantity;
+                    let filled_quantity =
+                        std::cmp::min(left_quantity, ask.quantity - ask.filled_quantity);
                     ask.filled_quantity += filled_quantity;
                     order.filled_quantity += filled_quantity;
                     executed_quantity += filled_quantity;
@@ -107,12 +122,39 @@ impl Orderbook {
         }
         (executed_quantity, fills)
     }
-    pub fn match_bids(&mut self, order: &mut Order) {}
-}
+    pub fn match_bids(&mut self, order: &mut Order) -> (Decimal, Vec<Fill>) {
+        // Incoming order is willing to Sell
+        // Need to rev the bids as the best bid should be the largest price
+        // Bids (after rev)
+        // 100   10
+        // 88    20
+        let mut executed_quantity = dec!(0);
+        let mut fills = Vec::<Fill>::new();
 
-#[test]
-pub fn setup_orderbook() {
-    let book = Orderbook::new();
-    assert_eq!(book.asks.len(), 0);
-    assert_eq!(book.bids.len(), 0);
+        for (price, bids) in self.bids.iter_mut().rev() {
+            if &order.price > price {
+                // Incoming order is willing to sell
+                // if incoming order price is greater(say 101) than the best bid 100, return
+                return (executed_quantity, fills);
+            }
+            if executed_quantity < order.quantity {
+                for bid in bids.iter_mut() {
+                    let left_quantity = order.quantity - order.filled_quantity;
+                    let filled_quantity =
+                        cmp::min(left_quantity, bid.quantity - bid.filled_quantity);
+                    executed_quantity += filled_quantity;
+                    bid.filled_quantity += filled_quantity;
+                    order.filled_quantity += filled_quantity;
+                    fills.push(Fill {
+                        maker_order_id: bid.order_id,
+                        taker_order_id: order.order_id,
+                        quantity: filled_quantity,
+                        price: bid.price,
+                    });
+                }
+                bids.retain(|bid| bid.filled_quantity < bid.quantity);
+            }
+        }
+        (executed_quantity, fills)
+    }
 }
