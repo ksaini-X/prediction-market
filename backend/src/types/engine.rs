@@ -26,10 +26,3 @@ pub struct User {
     pub locked_balance: Decimal,
     pub positions: HashMap<Uuid, Holdings>,
 }
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum MarketAction {
-    PlaceOrder(PlaceOrder),
-    Split { quantity: Decimal },
-    Merge { quantity: Decimal },
-}

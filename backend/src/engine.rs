@@ -1,4 +1,10 @@
-use crate::{error::CustomError, types::orderbook::Fill};
+use crate::{
+    error::CustomError,
+    types::{
+        engine::Holdings,
+        orderbook::{Fill, OrderAction},
+    },
+};
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -6,10 +12,7 @@ use uuid::Uuid;
 
 use crate::{
     orderbook::Orderbook,
-    types::{
-        engine::{Market, User},
-        orderbook::PlaceOrder,
-    },
+    types::engine::{Market, User},
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -43,7 +46,7 @@ impl Engine {
     pub fn create_market(&mut self, resolution_time: i64, title: String) -> Uuid {
         let market_id = Uuid::new_v4();
         let market = Market {
-            market_id: Uuid::new_v4(),
+            market_id,
             orderbook: Orderbook {
                 bids: BTreeMap::new(),
                 asks: BTreeMap::new(),
@@ -57,11 +60,7 @@ impl Engine {
     }
 
     pub fn check_user_balance(&self, user_id: Uuid, amount: Decimal) -> Result<(), CustomError> {
-        let user = self
-            .users
-            .get(&user_id)
-            .ok_or(CustomError::UserNotFound)
-            .unwrap();
+        let user = self.users.get(&user_id).ok_or(CustomError::UserNotFound)?;
         if user.balance < amount {
             return Err(CustomError::InsufficientUserBalance);
         }
@@ -75,8 +74,7 @@ impl Engine {
         let user = self
             .users
             .get_mut(&user_id)
-            .ok_or(CustomError::UserNotFound)
-            .unwrap();
+            .ok_or(CustomError::UserNotFound)?;
         if user.balance < amount {
             return Err(CustomError::InsufficientUserBalance);
         }
@@ -92,8 +90,7 @@ impl Engine {
         let user = self
             .users
             .get_mut(&user_id)
-            .ok_or(CustomError::UserNotFound)
-            .unwrap();
+            .ok_or(CustomError::UserNotFound)?;
 
         user.balance += amount;
         Ok(())
@@ -106,8 +103,7 @@ impl Engine {
         let user = self
             .users
             .get_mut(&user_id)
-            .ok_or(CustomError::UserNotFound)
-            .unwrap();
+            .ok_or(CustomError::UserNotFound)?;
         if user.locked_balance < amount {
             return Err(CustomError::InsufficientUserLockedBalance);
         }
@@ -118,73 +114,79 @@ impl Engine {
     pub fn place_order(
         &mut self,
         market_id: Uuid,
-        place_order_data: PlaceOrder,
-    ) -> Result<(Uuid, Decimal, Vec<Fill>), CustomError> {
-        let amount = place_order_data.price * place_order_data.quantity;
-
-        match place_order_data.order_action {
-            Some(crate::types::orderbook::OrderAction::Split(amount)) => {
-                self.check_user_balance(place_order_data.user_id, amount)?;
-                self.deduct_user_balance(place_order_data.user_id, amount)?;
+        user_id: Uuid,
+        order_action: OrderAction,
+    ) -> Result<(), CustomError> {
+        match order_action {
+            OrderAction::Split(amount) => {
+                self.deduct_user_balance(user_id, amount)?;
                 let user_position = self
                     .users
-                    .get_mut(&place_order_data.user_id)
+                    .get_mut(&user_id)
                     .unwrap()
                     .positions
-                    .get_mut(&market_id)
-                    .unwrap();
+                    .entry(market_id)
+                    .or_insert(Holdings {
+                        no: dec!(0),
+                        yes: dec!(0),
+                    });
                 user_position.no += amount;
                 user_position.yes += amount;
-                ()
+                Ok(())
             }
-            Some(crate::types::orderbook::OrderAction::Merge(amount)) => {
+            OrderAction::Merge(amount) => {
                 let user_position = self
                     .users
-                    .get_mut(&place_order_data.user_id)
+                    .get_mut(&user_id)
                     .unwrap()
                     .positions
                     .get_mut(&market_id)
                     .unwrap();
+
                 if user_position.no < amount || user_position.yes < amount {
                     return Err(CustomError::InvalidHoldingsForMerge);
                 } else {
                     user_position.no -= amount;
                     user_position.yes -= amount;
-                    self.deposit_user_balance(place_order_data.user_id, amount)?;
-                    ()
+                    self.deposit_user_balance(user_id, amount)?;
                 }
+                Ok(())
             }
-            None => (),
-        }
-        self.check_user_balance(place_order_data.user_id, amount)?;
-        self.deduct_user_balance(place_order_data.user_id, amount)?;
+            OrderAction::PlaceOrder(place_order_data) => {
+                let amount = place_order_data.price * place_order_data.quantity;
+                self.deduct_user_balance(user_id, amount)?;
 
-        let market = self
-            .markets
-            .get_mut(&market_id)
-            .ok_or(CustomError::MarketNotFound)
-            .unwrap();
+                let market = self
+                    .markets
+                    .get_mut(&market_id)
+                    .ok_or(CustomError::MarketNotFound)?;
 
-        let (order_id, executed_quantity, fills) = market.orderbook.place_order(place_order_data);
-        if executed_quantity > dec!(0) {
-            let user_positions = self
-                .users
-                .get_mut(&place_order_data.user_id)
-                .unwrap()
-                .positions
-                .get_mut(&market_id)
-                .unwrap();
+                let (order_id, executed_quantity, fills) =
+                    market.orderbook.place_order(place_order_data, user_id);
+                if executed_quantity > dec!(0) {
+                    let user_positions = self
+                        .users
+                        .get_mut(&user_id)
+                        .unwrap()
+                        .positions
+                        .entry(market_id)
+                        .or_insert(Holdings {
+                            yes: dec!(0),
+                            no: dec!(0),
+                        });
 
-            match place_order_data.order_side {
-                Some(crate::types::orderbook::OrderSide::No) => {
-                    user_positions.no += executed_quantity;
+                    match place_order_data.order_side {
+                        Some(crate::types::orderbook::OrderSide::No) => {
+                            user_positions.no += executed_quantity;
+                        }
+                        Some(crate::types::orderbook::OrderSide::Yes) => {
+                            user_positions.yes += executed_quantity;
+                        }
+                        None => (),
+                    }
                 }
-                Some(crate::types::orderbook::OrderSide::Yes) => {
-                    user_positions.yes += executed_quantity;
-                }
-                None => (),
+                Ok(())
             }
         }
-        return Ok((order_id, executed_quantity, fills));
     }
 }

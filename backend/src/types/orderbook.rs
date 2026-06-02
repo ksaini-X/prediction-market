@@ -27,16 +27,15 @@ pub enum OrderSide {
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct PlaceOrder {
-    pub user_id: Uuid,
     pub price: Decimal,
     pub quantity: Decimal,
     pub order_type: OrderType,
     pub order_side: Option<OrderSide>,
-    pub order_action: Option<OrderAction>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Copy)]
 pub enum OrderAction {
+    PlaceOrder(PlaceOrder),
     Split(Decimal),
     Merge(Decimal),
 }
