@@ -1,0 +1,21 @@
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use uuid::Uuid;
+
+use crate::orderbook::Orderbook;
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Market {
+    pub title: String,
+    pub resolution_time: i64,
+    pub resolved: bool,
+    pub market_id: Uuid,
+    pub orderbook: Orderbook,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct User {
+    pub user_id: Uuid,
+    pub balance: Decimal,
+}

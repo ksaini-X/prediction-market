@@ -1,50 +1,13 @@
-use std::{cmp, collections::BTreeMap, panic::RefUnwindSafe};
-
+use crate::types::orderbook::*;
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
+use std::{cmp, collections::BTreeMap};
 use uuid::Uuid;
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Order {
-    pub order_id: Uuid,
-    pub user_id: Uuid,
-    pub price: Decimal,
-    pub quantity: Decimal,
-    pub filled_quantity: Decimal,
-    pub order_type: OrderType,
-    pub order_side: OrderSide,
-}
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum OrderType {
-    Buy,
-    Sell,
-}
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum OrderSide {
-    Yes,
-    No,
-}
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Orderbook {
     pub bids: BTreeMap<Decimal, Vec<Order>>,
     pub asks: BTreeMap<Decimal, Vec<Order>>,
 }
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct PlaceOrder {
-    pub user_id: Uuid,
-    pub price: Decimal,
-    pub quantity: Decimal,
-    pub order_type: OrderType,
-    pub order_side: OrderSide,
-}
-
-pub struct Fill {
-    pub maker_order_id: Uuid,
-    pub taker_order_id: Uuid,
-    pub quantity: Decimal,
-    pub price: Decimal,
-}
-
 impl Orderbook {
     pub fn new() -> Self {
         Self {
@@ -63,6 +26,15 @@ impl Orderbook {
             quantity: place_order_data.quantity,
             user_id: place_order_data.user_id,
         };
+
+        if order.order_side == Some(OrderSide::No) {
+            order.price = dec!(1) - order.price;
+            if order.order_type == OrderType::Buy {
+                order.order_type = OrderType::Sell
+            } else if order.order_type == OrderType::Sell {
+                order.order_type = OrderType::Buy
+            }
+        }
 
         match order.order_type {
             OrderType::Buy => {
@@ -83,6 +55,9 @@ impl Orderbook {
                         .or_insert(vec![order.clone()]);
                 }
             }
+            // TODO
+            OrderType::Split(amount) => {}
+            OrderType::Merge(num_of_token) => {}
         };
     }
 
@@ -111,8 +86,8 @@ impl Orderbook {
                     order.filled_quantity += filled_quantity;
                     executed_quantity += filled_quantity;
                     fills.push(Fill {
-                        maker_order_id: order.order_id,
-                        taker_order_id: ask.order_id,
+                        taker_order_id: order.order_id,
+                        maker_order_id: ask.order_id,
                         quantity: filled_quantity,
                         price: ask.price,
                     });
@@ -152,8 +127,8 @@ impl Orderbook {
                         price: bid.price,
                     });
                 }
-                bids.retain(|bid| bid.filled_quantity < bid.quantity);
             }
+            bids.retain(|bid| bid.filled_quantity < bid.quantity);
         }
         (executed_quantity, fills)
     }
