@@ -13,15 +13,18 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(10),
         order_type: OrderType::Buy,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
+        order_action: None,
         price: dec!(101),
         quantity: dec!(10),
         order_type: OrderType::Buy,
         order_side: Some(OrderSide::Yes),
     });
     book.place_order(PlaceOrder {
+        order_action: None,
         user_id: Uuid::new_v4(),
         price: dec!(102),
         quantity: dec!(10),
@@ -31,6 +34,7 @@ pub fn add_orders_to_orderbook() {
 
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
+        order_action: None,
         price: dec!(110),
         quantity: dec!(10),
         order_type: OrderType::Sell,
@@ -38,6 +42,7 @@ pub fn add_orders_to_orderbook() {
     });
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
+        order_action: None,
         price: dec!(109),
         quantity: dec!(10),
         order_type: OrderType::Sell,
@@ -47,6 +52,7 @@ pub fn add_orders_to_orderbook() {
         user_id: Uuid::new_v4(),
         price: dec!(108),
         quantity: dec!(10),
+        order_action: None,
         order_type: OrderType::Sell,
         order_side: Some(OrderSide::Yes),
     });

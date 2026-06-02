@@ -126,15 +126,16 @@ impl Engine {
             Some(crate::types::orderbook::OrderAction::Split(amount)) => {
                 self.check_user_balance(place_order_data.user_id, amount)?;
                 self.deduct_user_balance(place_order_data.user_id, amount)?;
-                let position = self
+                let user_position = self
                     .users
                     .get_mut(&place_order_data.user_id)
                     .unwrap()
                     .positions
                     .get_mut(&market_id)
                     .unwrap();
-                position.no += amount;
-                position.yes += amount;
+                user_position.no += amount;
+                user_position.yes += amount;
+                ()
             }
             Some(crate::types::orderbook::OrderAction::Merge(amount)) => {
                 let user_position = self
@@ -150,9 +151,10 @@ impl Engine {
                     user_position.no -= amount;
                     user_position.yes -= amount;
                     self.deposit_user_balance(place_order_data.user_id, amount)?;
+                    ()
                 }
             }
-            None => {}
+            None => (),
         }
         self.check_user_balance(place_order_data.user_id, amount)?;
         self.deduct_user_balance(place_order_data.user_id, amount)?;
@@ -180,7 +182,7 @@ impl Engine {
                 Some(crate::types::orderbook::OrderSide::Yes) => {
                     user_positions.yes += executed_quantity;
                 }
-                None => {}
+                None => (),
             }
         }
         return Ok((order_id, executed_quantity, fills));

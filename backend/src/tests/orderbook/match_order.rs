@@ -1,4 +1,7 @@
-use crate::{orderbook::*, types::orderbook::*};
+use crate::{
+    orderbook::*,
+    types::orderbook::{OrderSide::No, *},
+};
 use rust_decimal::dec;
 use uuid::Uuid;
 #[test]
@@ -11,6 +14,7 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(10),
         order_type: OrderType::Buy,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
@@ -18,6 +22,7 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(10),
         order_type: OrderType::Buy,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
@@ -25,6 +30,7 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(100),
         order_type: OrderType::Sell,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
 
     book.place_order(PlaceOrder {
@@ -33,6 +39,7 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(10),
         order_type: OrderType::Sell,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
@@ -40,6 +47,7 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(10),
         order_type: OrderType::Sell,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
     book.place_order(PlaceOrder {
         user_id: Uuid::new_v4(),
@@ -47,6 +55,7 @@ pub fn add_orders_to_orderbook() {
         quantity: dec!(10),
         order_type: OrderType::Sell,
         order_side: Some(OrderSide::Yes),
+        order_action: None,
     });
 
     println!("{:?}", book);
