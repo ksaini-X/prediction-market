@@ -14,28 +14,32 @@ pub struct Order {
     pub order_type: OrderType,
     pub order_side: Option<OrderSide>,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Copy)]
 pub enum OrderType {
     Buy,
     Sell,
-    Split(Decimal),
-    Merge(Decimal),
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Copy)]
 pub enum OrderSide {
     Yes,
     No,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Copy)]
 pub struct PlaceOrder {
     pub user_id: Uuid,
     pub price: Decimal,
     pub quantity: Decimal,
     pub order_type: OrderType,
     pub order_side: Option<OrderSide>,
+    pub order_action: Option<OrderAction>,
 }
 
+#[derive(Serialize, Deserialize, Clone, Copy)]
+pub enum OrderAction {
+    Split(Decimal),
+    Merge(Decimal),
+}
 pub struct Fill {
     pub maker_order_id: Uuid,
     pub taker_order_id: Uuid,

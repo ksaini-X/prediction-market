@@ -16,7 +16,7 @@ impl Orderbook {
         }
     }
 
-    pub fn place_order(&mut self, place_order_data: PlaceOrder) {
+    pub fn place_order(&mut self, place_order_data: PlaceOrder) -> (Uuid, Decimal, Vec<Fill>) {
         let mut order = Order {
             filled_quantity: dec!(0),
             order_id: Uuid::new_v4(),
@@ -26,6 +26,9 @@ impl Orderbook {
             quantity: place_order_data.quantity,
             user_id: place_order_data.user_id,
         };
+
+        let mut executed_qauntity: Decimal = dec!(0);
+        let mut fills: Vec<Fill> = Vec::new();
 
         if order.order_side == Some(OrderSide::No) {
             order.price = dec!(1) - order.price;
@@ -38,7 +41,7 @@ impl Orderbook {
 
         match order.order_type {
             OrderType::Buy => {
-                let (executed_qauntity, fills) = self.match_asks(&mut order);
+                (executed_qauntity, fills) = self.match_asks(&mut order);
                 if executed_qauntity < order.quantity {
                     self.bids
                         .entry(order.price)
@@ -47,7 +50,7 @@ impl Orderbook {
                 }
             }
             OrderType::Sell => {
-                let (executed_qauntity, fills) = self.match_bids(&mut order);
+                (executed_qauntity, fills) = self.match_bids(&mut order);
                 if executed_qauntity < order.quantity {
                     self.asks
                         .entry(order.price)
@@ -55,10 +58,8 @@ impl Orderbook {
                         .or_insert(vec![order.clone()]);
                 }
             }
-            // TODO
-            OrderType::Split(amount) => {}
-            OrderType::Merge(num_of_token) => {}
         };
+        (order.order_id, executed_qauntity, fills)
     }
 
     pub fn match_asks(&mut self, order: &mut Order) -> (Decimal, Vec<Fill>) {
