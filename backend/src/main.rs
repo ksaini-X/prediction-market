@@ -72,6 +72,10 @@ async fn main() {
                     let market = engine.resolve_market(market_id, outcome).unwrap();
                     let _ = reply.send(market);
                 }
+                EngineMessage::GetMarket { market_id, reply } => {
+                    let market = engine.get_market(market_id).unwrap();
+                    let _ = reply.send(market);
+                }
             }
         }
     });

@@ -11,10 +11,14 @@ use crate::{
 };
 
 pub enum EngineMessage {
-    ResolveMarket {
+    GetMarket {
         market_id: Uuid,
         reply: oneshot::Sender<Market>,
+    },
+    ResolveMarket {
+        market_id: Uuid,
         outcome: u8,
+        reply: oneshot::Sender<Market>,
     },
     GetAllMarkets {
         reply: oneshot::Sender<Vec<Market>>,

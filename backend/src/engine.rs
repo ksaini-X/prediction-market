@@ -57,6 +57,13 @@ impl Engine {
         market
     }
 
+    pub fn get_market(&self, market_id: Uuid) -> Result<Market, CustomError> {
+        self.markets
+            .get(&market_id)
+            .cloned()
+            .ok_or(CustomError::MarketNotFound)
+    }
+
     pub fn delete_market(&mut self, market_id: Uuid) -> Result<Market, CustomError> {
         self.markets
             .remove(&market_id)

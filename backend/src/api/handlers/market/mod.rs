@@ -8,6 +8,7 @@ use std::sync::Arc;
 pub mod create_market;
 pub mod delete_market;
 pub mod get_all_markets;
+pub mod get_market;
 pub mod resolve_market;
 
 pub fn market_router() -> Router<Arc<AppState>> {
