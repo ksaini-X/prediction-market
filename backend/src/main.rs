@@ -1,19 +1,9 @@
+use axum::Router;
 use std::sync::Arc;
-
-use axum::{
-    Router,
-    routing::{delete, get, post},
-};
-use tokio::sync::{Mutex, mpsc::Sender};
+use tokio::sync::mpsc::Sender;
 
 use crate::api::{
-    handlers::{
-        market::{
-            create_market::create_market, delete_market::delete_market,
-            get_all_market::get_all_markets, resolve_market::resolve_market,
-        },
-        user::{create_user::create_user, get_all_users::get_all_users, get_user::get_user},
-    },
+    handlers::{market::market_router, user::user_router},
     types::{
         api::{AllUsers, UserCreated},
         engine::EngineMessage,
@@ -89,13 +79,8 @@ async fn main() {
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     let router = Router::new()
-        .route("/", get(create_user))
-        .route("/users", get(get_all_users))
-        .route("/user", post(get_user))
-        .route("/market", post(create_market))
-        .route("/market/markets", get(get_all_markets))
-        .route("/market/resolve", post(resolve_market))
-        .route("/market", delete(delete_market))
+        .nest("/api", user_router())
+        .nest("/api", market_router())
         .with_state(shared_state);
 
     axum::serve(listener, router).await.unwrap()

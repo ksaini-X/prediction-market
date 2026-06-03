@@ -1,14 +1,14 @@
 use std::sync::Arc;
 
 use axum::{Json, extract::State};
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::oneshot;
 
 use crate::{
     AppState,
     api::types::{api::AllUsers, engine::EngineMessage},
     error::CustomError,
 };
-pub async fn create_user<'a>(
+pub async fn get_all_users(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<AllUsers>, CustomError> {
     let (s, r) = oneshot::channel::<AllUsers>();
