@@ -17,14 +17,12 @@ pub struct GetUserData {
 }
 
 pub async fn get_user(
-    State(state): State<Arc<Mutex<AppState>>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<GetUserData>,
 ) -> Result<Json<User>, CustomError> {
     let (s, r) = oneshot::channel::<User>();
 
     let a = state
-        .lock()
-        .await
         .tx
         .send(EngineMessage::GetUser {
             user_id: payload.user_id,

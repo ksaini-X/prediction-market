@@ -1,10 +1,14 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use axum::{Json, extract::State};
-use tokio::sync::oneshot;
+use serde::Deserialize;
+use tokio::sync::{Mutex, oneshot};
 use uuid::Uuid;
 
-use crate::{AppState, api::types::engine::EngineMessage, error::CustomError};
+use crate::{
+    AppState, api::types::engine::EngineMessage, error::CustomError, types::engine::Market,
+};
+#[derive(Debug, Deserialize)]
 
 pub struct ResolveData {
     pub market_id: Uuid,
@@ -12,13 +16,11 @@ pub struct ResolveData {
 }
 
 pub async fn resolve_market(
-    State(state): State<Arc<Mutex<AppState>>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<ResolveData>,
-) -> Result<(), CustomError> {
-    let (s, r) = oneshot::channel::<()>();
+) -> Result<Json<Market>, CustomError> {
+    let (s, r) = oneshot::channel::<Market>();
     state
-        .lock()
-        .unwrap()
         .tx
         .send(EngineMessage::ResolveMarket {
             market_id: payload.market_id,
@@ -26,8 +28,8 @@ pub async fn resolve_market(
             reply: s,
         })
         .await
-        .map_err(|_| CustomError::EngineDown);
+        .map_err(|_| CustomError::EngineDown)?;
 
-    let res = r.await.unwrap();
-    Ok(res)
+    let res = r.await.map_err(|_| CustomError::EngineDown)?;
+    Ok(Json(res))
 }

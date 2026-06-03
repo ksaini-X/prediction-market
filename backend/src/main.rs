@@ -2,12 +2,18 @@ use std::sync::Arc;
 
 use axum::{
     Router,
-    routing::{get, post},
+    routing::{delete, get, post},
 };
 use tokio::sync::{Mutex, mpsc::Sender};
 
 use crate::api::{
-    handlers::user::{create_user::create_user, get_all_users::get_all_users, get_user::get_user},
+    handlers::{
+        market::{
+            create_market::create_market, delete_market::delete_market,
+            get_all_market::get_all_markets, resolve_market::resolve_market,
+        },
+        user::{create_user::create_user, get_all_users::get_all_users, get_user::get_user},
+    },
     types::{
         api::{AllUsers, UserCreated},
         engine::EngineMessage,
@@ -66,26 +72,30 @@ async fn main() {
                 }
                 EngineMessage::GetAllMarkets { reply } => {
                     let markets = engine.get_all_markets();
-                    reply.send(markets).unwrap()
+                    let _ = reply.send(markets);
                 }
                 EngineMessage::ResolveMarket {
                     market_id,
                     reply,
                     outcome,
                 } => {
-                    engine.resolve_market(market_id, outcome)?;
-                    reply.send(());
+                    let market = engine.resolve_market(market_id, outcome).unwrap();
+                    let _ = reply.send(market);
                 }
             }
         }
     });
-    let shared_state = Arc::new(Mutex::new(AppState { tx }));
+    let shared_state = Arc::new(AppState { tx });
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     let router = Router::new()
         .route("/", get(create_user))
         .route("/users", get(get_all_users))
         .route("/user", post(get_user))
+        .route("/market", post(create_market))
+        .route("/market/markets", get(get_all_markets))
+        .route("/market/resolve", post(resolve_market))
+        .route("/market", delete(delete_market))
         .with_state(shared_state);
 
     axum::serve(listener, router).await.unwrap()

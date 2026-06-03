@@ -67,17 +67,17 @@ impl Engine {
         self.markets.values().cloned().collect()
     }
 
-    pub fn resolve_market(&mut self, market_id: Uuid, outcome: u8) -> Result<(), CustomError> {
+    pub fn resolve_market(&mut self, market_id: Uuid, outcome: u8) -> Result<Market, CustomError> {
         let market = self
             .markets
             .get_mut(&market_id)
             .ok_or(CustomError::MarketNotFound)?;
         //TODO : Check resolution time
-        if outcome != 0 || outcome != 1 {
+        if ![0, 1].contains(&outcome) {
             return Err(CustomError::InvalidResolutionOutcome);
         } else {
             market.resolved = true;
-            Ok(())
+            Ok(market.clone())
         }
     }
 

@@ -9,12 +9,10 @@ use crate::{
     error::CustomError,
 };
 pub async fn create_user(
-    State(state): State<Arc<Mutex<AppState>>>,
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<UserCreated>, CustomError> {
     let (s, r) = oneshot::channel::<UserCreated>();
     state
-        .lock()
-        .await
         .tx
         .send(EngineMessage::CreateUser { reply: s })
         .await

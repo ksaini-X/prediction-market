@@ -8,13 +8,11 @@ use crate::{
     api::types::{api::AllUsers, engine::EngineMessage},
     error::CustomError,
 };
-pub async fn get_all_users<'a>(
-    State(state): State<Arc<Mutex<AppState>>>,
+pub async fn create_user<'a>(
+    State(state): State<Arc<AppState>>,
 ) -> Result<Json<AllUsers>, CustomError> {
     let (s, r) = oneshot::channel::<AllUsers>();
     let a = state
-        .lock()
-        .await
         .tx
         .send(EngineMessage::GetAllUsers { reply: s })
         .await

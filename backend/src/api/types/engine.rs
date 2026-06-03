@@ -13,7 +13,7 @@ use crate::{
 pub enum EngineMessage {
     ResolveMarket {
         market_id: Uuid,
-        reply: oneshot::Sender<()>,
+        reply: oneshot::Sender<Market>,
         outcome: u8,
     },
     GetAllMarkets {

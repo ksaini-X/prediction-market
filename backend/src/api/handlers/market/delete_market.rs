@@ -1,27 +1,26 @@
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use axum::{Json, extract::State};
-use tokio::sync::oneshot;
+use serde::Deserialize;
+use tokio::sync::{Mutex, oneshot};
 use uuid::Uuid;
 
 use crate::{
     AppState, api::types::engine::EngineMessage, error::CustomError, types::engine::Market,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct DeleteMarketData {
     pub market_id: Uuid,
 }
 
 pub async fn delete_market(
-    State(state): State<Arc<Mutex<AppState>>>,
+    State(state): State<Arc<AppState>>,
     Json(payload): Json<DeleteMarketData>,
 ) -> Result<Json<Market>, CustomError> {
     let (s, r) = oneshot::channel::<Market>();
 
     state
-        .lock()
-        .unwrap()
         .tx
         .send(EngineMessage::DeleteMarket {
             market_id: payload.market_id,
