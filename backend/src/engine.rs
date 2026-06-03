@@ -1,9 +1,6 @@
 use crate::{
     error::CustomError,
-    types::{
-        engine::Holdings,
-        orderbook::{Fill, OrderAction},
-    },
+    types::{engine::Holdings, orderbook::OrderAction},
 };
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
