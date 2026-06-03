@@ -34,13 +34,13 @@ impl Engine {
                 user_id,
                 balance: dec!(1000),
                 locked_balance: dec!(0),
-                positions: HashMap::new(),
+                holdings: HashMap::new(),
             },
         );
         user_id
     }
 
-    pub fn create_market(&mut self, resolution_time: i64, title: String) -> Uuid {
+    pub fn create_market(&mut self, resolution_time: i64, title: String) -> Market {
         let market_id = Uuid::new_v4();
         let market = Market {
             market_id,
@@ -51,9 +51,34 @@ impl Engine {
             resolution_time,
             resolved: false,
             title,
+            resolved_outcome: None,
         };
-        self.markets.insert(market_id, market);
-        market_id
+        self.markets.insert(market_id, market.clone());
+        market
+    }
+
+    pub fn delete_market(&mut self, market_id: Uuid) -> Result<Market, CustomError> {
+        self.markets
+            .remove(&market_id)
+            .ok_or(CustomError::MarketNotFound)
+    }
+
+    pub fn get_all_markets(&self) -> Vec<Market> {
+        self.markets.values().cloned().collect()
+    }
+
+    pub fn resolve_market(&mut self, market_id: Uuid, outcome: u8) -> Result<(), CustomError> {
+        let market = self
+            .markets
+            .get_mut(&market_id)
+            .ok_or(CustomError::MarketNotFound)?;
+        //TODO : Check resolution time
+        if outcome != 0 || outcome != 1 {
+            return Err(CustomError::InvalidResolutionOutcome);
+        } else {
+            market.resolved = true;
+            Ok(())
+        }
     }
 
     pub fn check_user_balance(&self, user_id: Uuid, amount: Decimal) -> Result<(), CustomError> {
@@ -63,6 +88,7 @@ impl Engine {
         }
         Ok(())
     }
+
     pub fn deduct_user_balance(
         &mut self,
         user_id: Uuid,
@@ -79,6 +105,12 @@ impl Engine {
         user.locked_balance += amount;
         Ok(())
     }
+
+    pub fn get_user(&self, user_id: Uuid) -> Result<User, CustomError> {
+        let user = self.users.get(&user_id).ok_or(CustomError::UserNotFound)?;
+        Ok(user.clone())
+    }
+
     pub fn deposit_user_balance(
         &mut self,
         user_id: Uuid,
@@ -92,6 +124,7 @@ impl Engine {
         user.balance += amount;
         Ok(())
     }
+
     pub fn unlock_user_balance(
         &mut self,
         user_id: Uuid,
@@ -108,6 +141,7 @@ impl Engine {
         user.locked_balance -= amount;
         Ok(())
     }
+
     pub fn place_order(
         &mut self,
         market_id: Uuid,
@@ -121,7 +155,7 @@ impl Engine {
                     .users
                     .get_mut(&user_id)
                     .unwrap()
-                    .positions
+                    .holdings
                     .entry(market_id)
                     .or_insert(Holdings {
                         no: dec!(0),
@@ -136,7 +170,7 @@ impl Engine {
                     .users
                     .get_mut(&user_id)
                     .unwrap()
-                    .positions
+                    .holdings
                     .get_mut(&market_id)
                     .unwrap();
 
@@ -165,7 +199,7 @@ impl Engine {
                         .users
                         .get_mut(&user_id)
                         .unwrap()
-                        .positions
+                        .holdings
                         .entry(market_id)
                         .or_insert(Holdings {
                             yes: dec!(0),
@@ -185,5 +219,9 @@ impl Engine {
                 Ok(())
             }
         }
+    }
+
+    pub fn get_all_users(&self) -> HashMap<Uuid, User> {
+        self.users.clone()
     }
 }

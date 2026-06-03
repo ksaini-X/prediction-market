@@ -10,6 +10,8 @@ pub enum CustomError {
     InsufficientUserBalance,
     InsufficientUserLockedBalance,
     InvalidHoldingsForMerge,
+    InvalidResolutionOutcome,
+    InvalidResolutionTime,
 }
 
 impl IntoResponse for CustomError {
@@ -27,6 +29,13 @@ impl IntoResponse for CustomError {
             CustomError::InvalidHoldingsForMerge => {
                 (StatusCode::BAD_REQUEST, "Invalid holdings for merge")
             }
+            CustomError::InvalidResolutionOutcome => {
+                (StatusCode::BAD_REQUEST, "Outcome should be 0(NO) or 1(YES)")
+            }
+            CustomError::InvalidResolutionTime => (
+                StatusCode::BAD_REQUEST,
+                "Current time is less than resolution time",
+            ),
         };
         (status, msg).into_response()
     }
