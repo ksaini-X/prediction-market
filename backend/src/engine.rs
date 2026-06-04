@@ -1,7 +1,11 @@
 use crate::{
     error::CustomError,
-    types::{engine::Holdings, orderbook::OrderAction},
+    types::{
+        engine::Holdings,
+        orderbook::{Order, OrderAction},
+    },
 };
+use core::slice;
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -23,6 +27,18 @@ impl Engine {
         Self {
             markets: HashMap::new(),
             users: HashMap::new(),
+        }
+    }
+
+    pub fn get_orders_for_user(&self, user_id: Uuid) -> Result<Vec<Order>, CustomError> {
+        let mut orders = Vec::<Order>::new();
+        for (_id, market) in &self.markets {
+            orders.extend(market.orderbook.get_all_orders_for_user(user_id))
+        }
+        if orders.len() == 0 {
+            Err(CustomError::UserNotFound)
+        } else {
+            Ok(orders)
         }
     }
 

@@ -2,12 +2,16 @@ use axum::Router;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
-use crate::api::{
-    handlers::{market::market_router, user::user_router},
-    types::{
-        api::{AllUsers, UserCreated},
-        engine::EngineMessage,
+use crate::{
+    api::{
+        handlers::{market::market_router, user::user_router},
+        types::{
+            api::{AllUsers, UserCreated},
+            engine::EngineMessage,
+        },
     },
+    error::CustomError,
+    types::orderbook::Order,
 };
 pub mod api;
 pub mod engine;
@@ -28,6 +32,25 @@ async fn main() {
         let mut engine = engine::Engine::new();
         while let Some(msg) = rx.recv().await {
             match msg {
+                EngineMessage::GetAllOrdersForUser { user_id, reply } => {
+                    let orders = engine
+                        .markets
+                        .values()
+                        .map(|m| m.orderbook.get_all_orders_for_user(user_id))
+                        .clone()
+                        .collect();
+
+                    reply.send(orders).unwrap()
+                }
+                EngineMessage::CancelOrder {
+                    user_id,
+                    order_id,
+                    market_id,
+                    reply,
+                } => engine
+                    .markets
+                    .get(&market_id)
+                    .ok_or(Err(CustomError::MarketNotFound)).unwrap().orderbook.,
                 EngineMessage::PlaceOrder {
                     market_id,
                     user_id,

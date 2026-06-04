@@ -143,4 +143,25 @@ impl Orderbook {
 
         (executed_quantity, fills)
     }
+
+    pub fn get_all_orders_for_user(&self, user_id: Uuid) -> Vec<Order> {
+        let mut orders: Vec<Order> = self
+            .bids
+            .values()
+            .flatten()
+            .filter(|o| o.user_id == user_id)
+            .cloned()
+            .collect();
+
+        let asks: Vec<Order> = self
+            .asks
+            .values()
+            .flatten()
+            .filter(|o| o.user_id == user_id)
+            .cloned()
+            .collect();
+
+        orders.extend(asks);
+        orders
+    }
 }
