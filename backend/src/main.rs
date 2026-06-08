@@ -36,10 +36,9 @@ async fn main() {
                     let orders = engine
                         .markets
                         .values()
-                        .map(|m| m.orderbook.get_all_orders_for_user(user_id))
-                        .clone()
+                        .map(|market| market.orderbook.get_all_orders_for_user(user_id))
+                        .flatten()
                         .collect();
-
                     reply.send(orders).unwrap()
                 }
                 EngineMessage::CancelOrder {
@@ -47,14 +46,21 @@ async fn main() {
                     order_id,
                     market_id,
                     reply,
-                } => engine
-                    .markets
-                    .get(&market_id)
-                    .ok_or(Err(CustomError::MarketNotFound)).unwrap().orderbook.,
+                } => {
+                    let res = engine
+                        .markets
+                        .get_mut(&market_id)
+                        .expect("Market not found")
+                        .orderbook
+                        .cancel_order(order_id)
+                        .unwrap();
+                    reply.send(res).unwrap();
+                }
+
                 EngineMessage::PlaceOrder {
                     market_id,
                     user_id,
-                    action,
+                    order_action: action,
                     reply,
                 } => {
                     let r = engine.place_order(market_id, user_id, action);
