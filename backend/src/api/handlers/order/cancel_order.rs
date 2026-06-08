@@ -5,7 +5,9 @@ use serde::Serialize;
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-use crate::{AppState, error::CustomError, types::orderbook::Order};
+use crate::{
+    AppState, api::types::engine::EngineMessage, error::CustomError, types::orderbook::Order,
+};
 
 #[derive(Serialize)]
 pub struct CancelOrder {
@@ -19,5 +21,16 @@ pub async fn cancel_order(
     Json(payload): Json<CancelOrder>,
 ) -> Result<Json<Order>, CustomError> {
     let (s, r) = oneshot::channel::<Order>();
-    state.tx
+    state
+        .tx
+        .send(EngineMessage::CancelOrder {
+            user_id: payload.user_id,
+            order_id: payload.order_id,
+            market_id: payload.market_id,
+            reply: s,
+        })
+        .await
+        .unwrap();
+    let res = r.await.unwrap();
+    Ok(Json(res))
 }

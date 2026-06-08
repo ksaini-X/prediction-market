@@ -6,11 +6,17 @@ use crate::{
     error::CustomError,
     types::{
         engine::{Market, User},
-        orderbook::{Order, OrderAction},
+        orderbook::{Fill, Order, OrderAction},
     },
 };
 
 pub enum EngineMessage {
+    PlaceOrder {
+        market_id: Uuid,
+        user_id: Uuid,
+        order_action: OrderAction,
+        reply: oneshot::Sender<(Uuid, Vec<Fill>)>,
+    },
     CancelOrder {
         user_id: Uuid,
         order_id: Uuid,
@@ -48,12 +54,7 @@ pub enum EngineMessage {
     GetAllUsers {
         reply: oneshot::Sender<AllUsers>,
     },
-    PlaceOrder {
-        market_id: Uuid,
-        user_id: Uuid,
-        action: OrderAction,
-        reply: oneshot::Sender<Result<OrderPlaced, CustomError>>,
-    },
+
     CreateMarket {
         title: String,
         resolution_time: i64,

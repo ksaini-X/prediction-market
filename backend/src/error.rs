@@ -12,6 +12,7 @@ pub enum CustomError {
     InvalidHoldingsForMerge,
     InvalidResolutionOutcome,
     InvalidResolutionTime,
+    OrderNotFound,
 }
 
 impl IntoResponse for CustomError {
@@ -36,6 +37,7 @@ impl IntoResponse for CustomError {
                 StatusCode::BAD_REQUEST,
                 "Current time is less than resolution time",
             ),
+            CustomError::OrderNotFound => (StatusCode::BAD_REQUEST, "Order not found"),
         };
         (status, msg).into_response()
     }

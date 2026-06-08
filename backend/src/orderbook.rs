@@ -1,4 +1,4 @@
-use crate::types::orderbook::*;
+use crate::{error::CustomError, types::orderbook::*};
 use rust_decimal::{Decimal, dec};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -67,7 +67,24 @@ impl Orderbook {
         };
         (order.order_id, executed_quantity, fills)
     }
-
+    pub fn cancel_order(&mut self, order_id: Uuid) -> Result<Order, CustomError> {
+        for (price, asks) in self.asks.iter_mut() {
+            if let Some(order) = asks.iter().find(|o| o.order_id == order_id) {
+                asks.retain(|o| o.order_id != order_id);
+                return Ok(order.clone());
+            } else {
+                return Err(CustomError::OrderNotFound);
+            }
+        }
+        for (price, asks) in self.bids.iter_mut() {
+            if let Some(order) = asks.iter().find(|o| o.order_id == order_id) {
+                asks.retain(|o| o.order_id != order_id);
+                return Ok(order.clone());
+            } else {
+                return Err(CustomError::OrderNotFound);
+            }
+        }
+    }
     pub fn match_asks(&mut self, order: &mut Order) -> (Decimal, Vec<Fill>) {
         //Incoming order is willing to Buy
         // {Bid, price:98, q:10} (Usually the Bid order price would be less that the best ask)
